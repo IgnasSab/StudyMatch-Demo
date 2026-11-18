@@ -13,8 +13,8 @@ const plugins = [themePlugin, timeGridPlugin];
 const toolbar = { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' };
 const timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
 
-export default function Schedule({ matches, bookings, onSelect, onBook }) {
-  const [selectedId, setSelectedId] = useState(null);
+export default function Schedule({ matches, bookings, onSelect, onBook, initialSelectedSlot = null, focusStartsAt }) {
+  const [selectedId, setSelectedId] = useState(initialSelectedSlot === null ? null : `slot-${initialSelectedSlot}`);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [showAvailable, setShowAvailable] = useState(true);
@@ -24,6 +24,7 @@ export default function Schedule({ matches, bookings, onSelect, onBook }) {
     ...matches.filter((study) => study.status === 'eligible' && !study.booked).flatMap((study) => study.slots.map((slot) => ({ ...slot, calendar_id: `slot-${slot.id}`, study_id: study.id, title: study.title, duration: study.duration, location: study.location, available: true, status: slot.remaining === 0 ? 'Full' : conflicts(slot, study.duration, bookings) ? 'Schedule conflict' : 'Available' }))),
   ].sort((first, second) => new Date(first.starts_at) - new Date(second.starts_at)), [matches, bookings]);
   const [initialDate] = useState(() => {
+    if (focusStartsAt) return focusStartsAt;
     const now = new Date();
     const nextEntry = entries.find((entry) => new Date(entry.starts_at) >= now);
     return nextEntry ? nextEntry.starts_at : now.toISOString();
@@ -58,7 +59,7 @@ export default function Schedule({ matches, bookings, onSelect, onBook }) {
       slotMinHeight={90} eventMinHeight={90} dayHeaderClass="calendar-day-heading"
       dayHeaderFormat={{ weekday: 'short', day: 'numeric' }} eventTimeFormat={timeFormat}
       slotHeaderFormat={timeFormat} allDaySlot={false} nowIndicator editable={false} eventInteractive
-      scrollTime="08:00:00" slotDuration="00:30:00" height="max(500px, calc(100dvh - 220px))"
+      scrollTime={focusStartsAt ? `${timeLabel(focusStartsAt)}:00` : '08:00:00'} slotDuration="00:30:00" height={focusStartsAt ? 'max(360px, calc(100dvh - 520px))' : 'max(500px, calc(100dvh - 220px))'}
     /></div>
     <p className="small-note calendar-note">Select a grey session to review and confirm. Only studies you’re eligible for appear.</p></div>
     <section className="upcoming-bookings" aria-label="Upcoming bookings"><h2>Upcoming bookings</h2>{upcoming.length ? upcoming.map((booking) => <article className="upcoming-booking" key={booking.id}><time dateTime={booking.starts_at}>{dateLabel(booking.starts_at)} · {timeLabel(booking.starts_at)}</time><h3>{booking.title}</h3><p>{booking.duration} min · {booking.location}</p><button className="text-button" onClick={() => { setSelectedId(booking.calendar_id); setError(''); }}>View booking<ChevronRight size={14} /></button>{matches.some((study) => study.id === booking.study_id) && <button className="text-button" onClick={() => onSelect(booking.study_id)}>Study details<ChevronRight size={14} /></button>}</article>) : <Empty icon={CalendarDays} title="No upcoming bookings">Confirmed sessions will appear here.</Empty>}</section></div>

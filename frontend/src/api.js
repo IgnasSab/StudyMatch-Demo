@@ -1,4 +1,8 @@
 export async function api(path, method = 'GET', body) {
+  if (import.meta.env.VITE_DEMO_MODE) {
+    const { demoStore } = await import('./demo-state');
+    return demoStore.request(path, method, body);
+  }
   const multipart = body instanceof FormData;
   const response = await fetch(`/api${path}`, {
     method,

@@ -1,0 +1,6 @@
+name: studymatch-demo
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - nodejs>=22.12,<23

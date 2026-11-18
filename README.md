@@ -2,7 +2,56 @@
 
 Private workspace for a **3–4 person team** at Oxford Edge, **7 November 2026**. StudyMatch helps participants discover research, complete only missing screening questions, and book a session. Researchers review AI-extracted study details and eligibility rules before publication. React/Vite + FastAPI + SQLite; Impeccable guided the interface redesign.
 
-## Run locally
+## Incubator demo
+
+The public demo reuses the workspace with **no backend, login or live services**. The Windows Conda setup isolates Node.js/npm; frontend packages are installed from the lockfile into `frontend/node_modules`. No Python, database or API key is needed.
+
+One-time setup from the repository root:
+
+```powershell
+conda env create --file environment.yml
+conda run --no-capture-output --name studymatch-demo npm.cmd --prefix frontend ci
+```
+
+Launch the local production demo:
+
+```powershell
+.\start-demo.ps1
+```
+
+Open **http://127.0.0.1:4173**. The launcher builds the demo and serves it using `studymatch-demo`; manual environment activation is not required. Leave that terminal open and press Ctrl+C to stop. Port 4173 must be free; the launcher does not silently select another port. Re-run the setup's `npm ci` command after dependency/lockfile changes.
+
+For frontend development with hot reload instead:
+
+```powershell
+conda run --no-capture-output --name studymatch-demo npm.cmd --prefix frontend run dev:demo
+```
+
+Open the URL printed by Vite. Without Conda, the equivalent production commands require an existing compatible Node.js installation:
+
+```powershell
+npm --prefix frontend run build:demo
+npm --prefix frontend run start:demo
+```
+
+**Deploy to Vercel:** import `IgnasSab/StudyMatch-Demo`, use production branch `main`, and leave Root Directory at the repository root (`.`), not `frontend`. `vercel.json` selects the Other/static preset and supplies the install command, demo build command and `frontend/dist` output directory. `.vercelignore` excludes the retained Python backend and local data from deployment. No environment variables, API keys or database are needed. The deployment is publicly accessible to anyone with its URL unless Vercel Deployment Protection is enabled; `noindex` discourages search indexing, not access. No deployment is created by running the build locally.
+
+Suggested email workflow: **Start participant tour → starting questionnaire → new-study notification → study discovery and ranking → study-specific questions → calendar booking → confirmation → switch to researcher → view booking → start researcher tour → import sample → check requirements → set session times → publish.** Both tours also work independently. A researcher-published fifth study carries across roles.
+
+Next performs sample actions; Back and Restart restore deterministic scenes. Exit tour and Escape leave the current scene available for exploration. The top bar turns green for participants and light red for researchers. One role switch appears on the right; the tour controls show the active role and step count. The researcher-switch action is red. The sandbox supports filters/search, preferences, sample publication, screening, adding sessions and local booking. Four studies are seeded. Publication adds one fixed fifth study; arbitrary documents and live AI are intentionally unavailable. All people, answers and studies are fictional. No files, emails, payments or external calendar events are sent. State is in memory, isolated to the browser tab; **refresh or Reset demo starts over**. Starting a researcher tour removes the fifth sample study but preserves bookings for the original four studies. Starting a participant tour retains published studies but resets the sample participant's answers, preferences and bookings.
+
+Checks:
+
+```powershell
+npm --prefix frontend run test:demo
+npm --prefix frontend run test:demo:browser
+```
+
+Browser tests use installed Google Chrome via Playwright, build the static demo and start their own preview server on port 4175, separate from the local demo on 4173. They exercise both tour orders, rewind/restart/exit, role switching and labels, sandbox publication/screening/booking, desktop and phone layouts, color contrast, reduced-motion behavior, and absence of backend requests. Screenshots are saved under ignored `frontend/test-results/`.
+
+The normal `npm --prefix frontend run build` command still builds the authenticated FastAPI app described below. No existing database or account is copied into the public demo.
+
+## Run the full app locally
 
 Requires **Python 3.12** and **Node.js 22.12+**. From the repository root on Windows:
 

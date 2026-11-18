@@ -47,4 +47,9 @@ function App() {
   return account.role === 'participant' ? <Participant key={account.id} account={account} bootstrap={bootstrap} onLogout={logout} onAccountChange={setAccount} /> : <Researcher key={account.id} account={account} bootstrap={bootstrap} onLogout={logout} />;
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+const root = createRoot(document.getElementById('root'));
+if (import.meta.env.VITE_DEMO_MODE) {
+  import('./demo').then(({ default: Demo }) => root.render(<Demo />));
+} else {
+  root.render(<App />);
+}
