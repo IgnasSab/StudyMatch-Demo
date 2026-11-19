@@ -30,18 +30,36 @@ function DemoEntry({ onTour, onExplore }) {
 function TourSpotlight({ step, revision }) {
   useEffect(() => {
     const spotlight = driver({ animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches, duration: 200, overlayOpacity: 0.3, stagePadding: 8, stageRadius: 7, allowClose: false, allowKeyboardControl: false, focus: 'none', overlayClickBehavior: 'none', disableActiveInteraction: true, allowedElements: ['.demo-toolbar', '.demo-tour-dock', '.demo-match-alert'], scrollIntoView: false });
+    const content = document.querySelector('#demo-workspace .main-content');
+    const dock = document.querySelector('.demo-tour-dock');
+    function positionTarget(target) {
+      const contentBounds = content.getBoundingClientRect();
+      const dockBounds = dock.getBoundingClientRect();
+      const targetBounds = target.getBoundingClientRect();
+      const visibleHeight = dockBounds.top - contentBounds.top - 32;
+      content.style.setProperty('--demo-tour-clearance', `${contentBounds.bottom - dockBounds.top + 16}px`);
+      content.scrollTo({ top: content.scrollTop + targetBounds.top - contentBounds.top - 16 - Math.max(0, (visibleHeight - targetBounds.height) / 2), behavior: 'instant' });
+    }
+    const resizeObserver = new ResizeObserver(() => {
+      const target = document.querySelector(step.target);
+      if (!target) return;
+      positionTarget(target);
+      spotlight.refresh();
+    });
     let observer;
     function highlight() {
       const target = document.querySelector(step.target);
       if (!target) return;
       observer.disconnect();
-      target.scrollIntoView({ block: 'center', behavior: 'instant' });
+      positionTarget(target);
       spotlight.highlight({ element: target });
+      resizeObserver.observe(content, { box: 'border-box' });
+      resizeObserver.observe(dock);
     }
     observer = new MutationObserver(highlight);
     observer.observe(document.getElementById('demo-workspace'), { childList: true, subtree: true });
     highlight();
-    return () => { observer.disconnect(); spotlight.destroy(); };
+    return () => { observer.disconnect(); resizeObserver.disconnect(); spotlight.destroy(); };
   }, [step, revision]);
   return null;
 }

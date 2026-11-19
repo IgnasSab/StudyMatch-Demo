@@ -219,6 +219,51 @@ test('role labels and exit remain visible on compact desktop and phone', async (
   }
 });
 
+test('tour content stays above its controls at normal laptop and phone sizes', async ({ page }) => {
+  for (const viewport of [{ width: 1000, height: 500 }, { width: 1280, height: 600 }, { width: 1366, height: 768 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start participant tour', exact: true }).click();
+    for (const [role, steps] of [['participant', 11], ['researcher', 7]]) {
+      for (let index = 0; index < steps; index++) {
+        await expect(page.locator('.demo-tour-progress')).toContainText(`Step ${index + 1} of ${steps}`);
+        await expect(page.locator('.driver-active-element')).toBeAttached();
+        await expect.poll(() => page.evaluate(() => {
+          const content = document.querySelector('.main-content').getBoundingClientRect();
+          const target = document.querySelector('.driver-active-element').getBoundingClientRect();
+          const dock = document.querySelector('.demo-tour-dock').getBoundingClientRect();
+          const toolbar = document.querySelector('.demo-toolbar').getBoundingClientRect();
+          const visibleHeight = dock.top - content.top - 32;
+          const sidebar = document.querySelector('.navigation').getBoundingClientRect();
+          return content.top >= toolbar.bottom && content.bottom === innerHeight && getComputedStyle(document.querySelector('.demo-tour-dock')).position === 'fixed' && (innerWidth <= 650 || sidebar.bottom === innerHeight) && target.top >= content.top && target.top < dock.top && (target.height > visibleHeight || target.bottom <= dock.top - 16) && dock.bottom <= innerHeight && scrollY === 0 && document.documentElement.scrollWidth <= innerWidth;
+        })).toBe(true);
+        await expect(page.getByRole('button', { name: 'Exit tour', exact: true })).toBeInViewport();
+        await expect(page.locator('.demo-tour-actions .button:not(.secondary)')).toBeInViewport();
+        await expect(page.locator('.demo-tour-dock')).toHaveCSS('z-index', '1100000000');
+        if (viewport.width > 650) {
+          const dock = await page.locator('.demo-tour-dock').boundingBox();
+          expect(dock.height).toBeLessThan(145);
+        }
+        if (viewport.width === 1000 && role === 'participant' && index === 0) {
+          const content = page.locator('.main-content');
+          const before = await content.evaluate((element) => element.scrollTop);
+          const bounds = await content.boundingBox();
+          await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 80);
+          await page.mouse.wheel(0, 180);
+          await expect.poll(() => content.evaluate((element) => element.scrollTop)).toBeGreaterThan(before);
+        }
+        if (role === 'researcher' && [0, 2].includes(index)) {
+          await page.screenshot({ path: `test-results/tour-fit-${viewport.width}-${index}.png` });
+        }
+        if (role !== 'researcher' || index < steps - 1) await advance(page);
+      }
+    }
+    await page.getByRole('button', { name: 'Exit tour', exact: true }).click();
+    await expect(page.locator('.demo-touring')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Start tour', exact: true })).toBeInViewport();
+  }
+});
+
 test('keyboard focus stays in tour controls and returns to Start tour on exit', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Start participant tour', exact: true }).click();
