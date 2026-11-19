@@ -4,8 +4,8 @@ export const demoTours = {
   researcher: [
     { title: 'Manage your studies', description: 'View published studies, available sessions and bookings.', target: '.research-table' },
     { title: 'Import a study document', description: 'Load the prepared sample to see its study details and eligibility checks.', target: '[data-tour="import"]', next: 'Load sample' },
-    { title: 'Check the study details', description: 'Check the description, payment and participation requirements.', target: '[data-tour="preview"]' },
-    { title: 'Review eligibility questions', description: 'Check which requirements use saved answers and which need study-specific questions.', target: '[data-tour="rules"]' },
+    { title: 'Check the filled-in study details', description: 'The document fills in these fields for you. Check or edit them before publishing.', target: '[data-tour="preview"]' },
+    { title: 'Review the prepared questions', description: 'The document also prepares eligibility questions. Edit them or add your own.', target: '[data-tour="rules"]' },
     { title: 'Set session times', description: 'Choose when sessions run and how many participants can book.', target: '[data-tour="sessions"]' },
     { title: 'Approve and publish', description: 'Confirm the study details and participation requirements, then publish.', target: '[data-tour="publish"]', next: 'Publish study' },
     { title: 'Study published', description: 'Participants can now find the study, check eligibility and choose a session.', target: '.detail-facts' },

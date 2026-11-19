@@ -106,8 +106,7 @@ function addSlots(state, study, slots) {
   study.slots.push(...slots.map((slot) => ({ ...slot, starts_at: new Date(slot.starts_at).toISOString(), id: nextId++, remaining: slot.capacity })));
 }
 
-export function publishSample(state, slots = makeSlots(state.createdAt, 5, 2, 14)) {
-  const draft = state.draft;
+export function publishSample(state, slots = makeSlots(state.createdAt, 5, 2, 14), draft = state.draft) {
   if (draft === null) throw new Error('Load the sample study before publishing.');
   const study = { ...structuredClone(draft.fields), id: 5, rules: structuredClone(draft.rules), manual_review: false, review_notes: [], booked_count: 0, slots: [] };
   if (state.studies.some((item) => item.id === study.id)) throw new Error('The sample study is already published. Explore it in My studies or reset the demo.');
@@ -159,7 +158,7 @@ export function createDemoStore(initialState = createDemoState()) {
       }
       if (path === '/studies' && method === 'POST') {
         if (!body.approved) throw new Error('Review and approve the sample study before publishing.');
-        return publishSample(state, body.slots);
+        return publishSample(state, body.slots, body.draft);
       }
       if (path === '/answers' && method === 'POST') {
         const study = state.studies.find((item) => item.id === body.study_id);

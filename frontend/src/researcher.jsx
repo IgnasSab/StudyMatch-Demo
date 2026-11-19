@@ -17,6 +17,47 @@ function SlotsEditor({ slots, onChange }) {
 
 const slotPayload = (slots) => slots.map((slot) => ({ starts_at: new Date(slot.starts_at).toISOString(), capacity: slot.capacity }));
 
+function DemoStudyFields({ draft, onChange }) {
+  const questions = draft.rules.filter((rule) => rule.field === 'question');
+  const savedChecks = draft.rules.filter((rule) => rule.field !== 'question');
+  function change(key, value) {
+    onChange({ ...draft, fields: { ...draft.fields, [key]: value } });
+  }
+  function changeQuestion(id, changes) {
+    onChange({ ...draft, rules: draft.rules.map((rule) => rule.id === id ? { ...rule, ...changes } : rule) });
+  }
+  function addQuestion() {
+    onChange({ ...draft, rules: [...draft.rules, { id: `question-${crypto.randomUUID()}`, field: 'question', answer_type: 'boolean', question: '', value: true, choices: [], source: 'Added by researcher' }] });
+  }
+  return <>
+    <section className="demo-imported-details" data-tour="preview">
+      <div className="section-title"><h2>Check study details</h2><span className="demo-import-label"><CheckCircle2 size={14} />Filled from document</span></div>
+      <p className="demo-form-help">Your document filled in these fields. You can still edit them.</p>
+      <div className="form-grid demo-details-grid">
+        <Field label="Study title" wide><input required maxLength="120" value={draft.fields.title} onChange={(event) => change('title', event.target.value)} /></Field>
+        <Field label="Study description" wide><textarea required minLength="10" maxLength="12000" rows="2" value={draft.fields.description} onChange={(event) => change('description', event.target.value)} /></Field>
+        <Field label="Duration (minutes)"><input type="number" required min="5" max="480" value={draft.fields.duration} onChange={(event) => change('duration', Number(event.target.value))} /></Field>
+        <Field label="Payment (£)"><input type="number" required min="0" max="10000" step="0.01" value={draft.fields.compensation} onChange={(event) => change('compensation', Number(event.target.value))} /></Field>
+        <Field label="Format"><select value={draft.fields.mode} onChange={(event) => onChange({ ...draft, fields: { ...draft.fields, mode: event.target.value, location: event.target.value === 'online' ? 'Online' : '' } })}><option value="in_person">In person</option><option value="online">Online</option></select></Field>
+        {draft.fields.mode === 'in_person' && <Field label="Location"><input required maxLength="150" value={draft.fields.location} onChange={(event) => change('location', event.target.value)} /></Field>}
+      </div>
+    </section>
+    <section className="demo-question-editor" data-tour="rules">
+      <div className="section-title"><h2>Check screening questions</h2><span className="demo-import-label"><CheckCircle2 size={14} />Prepared from document</span></div>
+      <p className="demo-form-help">Review the questions below, or add your own.</p>
+      <div className="demo-saved-checks"><h3>Use the starting questionnaire</h3>{savedChecks.map((rule) => <div key={rule.id}><span>{rule.question}</span><strong>{Array.isArray(rule.value) ? `${rule.value[0]}–${rule.value[1]}` : rule.value ? 'Yes' : 'No'}</strong></div>)}</div>
+      <div className="section-title demo-question-heading"><h3>Study-specific questions</h3><span className="small-note">Yes / No answers</span></div>
+      <div className="demo-question-list">{questions.map((rule, index) => <div className="demo-question" key={rule.id}>
+        <Field label={`Question ${index + 1}`}><textarea rows="2" required maxLength="500" value={rule.question} onChange={(event) => changeQuestion(rule.id, { question: event.target.value })} /></Field>
+        <Field label="Required answer"><select value={String(rule.value)} onChange={(event) => changeQuestion(rule.id, { value: event.target.value === 'true' })}><option value="true">Yes</option><option value="false">No</option></select></Field>
+        <button type="button" className="icon-button" aria-label={`Remove question ${index + 1}`} onClick={() => onChange({ ...draft, rules: draft.rules.filter((existing) => existing.id !== rule.id) })}><Trash2 size={16} /></button>
+      </div>)}</div>
+      <Button type="button" secondary onClick={addQuestion}><Plus size={15} />Add question</Button>
+      <details className="demo-requirements"><summary>Eligibility text from the document</summary><p>{draft.fields.requirements}</p></details>
+    </section>
+  </>;
+}
+
 function CreateStudy({ bootstrap, onBack, onPublish, scene = {} }) {
   const [study, setStudy] = useState(scene.draft ? { ...scene.draft.fields, description: `${scene.draft.fields.description}\n\nEligibility:\n${scene.draft.fields.requirements}` } : blankStudy);
   const [draft, setDraft] = useState(scene.draft ?? null);
@@ -29,6 +70,7 @@ function CreateStudy({ bootstrap, onBack, onPublish, scene = {} }) {
   const [slots, setSlots] = useState(scene.slots ?? [{ starts_at: nextSession(), capacity: 3 }]);
   function invalidateDraft() { setDraft(null); setApproved(false); }
   function change(key, value) { setStudy((current) => ({ ...current, [key]: value })); invalidateDraft(); }
+  function changeDraft(nextDraft) { setDraft(nextDraft); setApproved(false); }
   async function extract(kind) {
     setBusy(kind); setError('');
     try {
@@ -51,12 +93,12 @@ function CreateStudy({ bootstrap, onBack, onPublish, scene = {} }) {
   }
   async function publish(event) {
     event.preventDefault(); setBusy('publish'); setError('');
-    try { await onPublish({ draft_id: draft.draft_id, approved, slots: slotPayload(slots) }); }
+    try { await onPublish({ draft_id: draft.draft_id, approved, slots: slotPayload(slots), ...(bootstrap.demo ? { draft } : {}) }); }
     catch (failure) { setError(failure.message); }
     finally { setBusy(''); }
   }
   return <div className="page create-page"><Back onClick={onBack}>Back to my studies</Back><Heading title="Create a study" />
-    {bootstrap.demo ? <section className="import-section demo-source" data-tour="import"><div className="section-title"><h2><FileText size={17} />Study document</h2><span className="tag">Sample document</span></div><p className="preserve-lines">{bootstrap.sample_description}</p><div className="import-help"><span>Sample import. Live AI and file uploads are not connected.</span><Button type="button" secondary disabled={Boolean(busy)} onClick={() => extract('sample')}><Upload size={15} />{busy === 'sample' ? 'Loading…' : 'Load sample study'}</Button></div></section> : <>
+    {bootstrap.demo ? <details className="import-section demo-source" data-tour="import" open={!draft}><summary><FileText size={17} /><span>Import PDF or text</span>{draft && <span className="demo-source-status"><CheckCircle2 size={14} />Imported</span>}<ChevronRight size={15} /></summary><p className="demo-import-intro">Use a study document instead of filling in each field by hand.</p><div className="demo-document"><div><FileText size={18} /><strong>Sample study document</strong></div><p className="preserve-lines">{bootstrap.sample_description}</p></div><div className="import-help"><Button type="button" secondary disabled={Boolean(busy)} onClick={() => extract('sample')}><Upload size={15} />{busy === 'sample' ? 'Loading…' : 'Load sample study'}</Button></div></details> : <>
     <details className="import-section"><summary><FileText size={17} />Simple PDF or text import<ChevronRight size={15} /></summary><div className="import-tabs segmented" aria-label="Import method">{[['pdf','Upload PDF'],['text','Paste text']].map(([key,label]) => <button type="button" key={key} aria-pressed={importMethod === key} className={importMethod === key ? 'active' : ''} onClick={() => setImportMethod(key)}>{label}</button>)}</div>
       {importMethod === 'pdf' ? <div className="upload-row"><Field label="Study information PDF" hint="Text PDFs, up to 5 MB and 20 pages."><input type="file" accept="application/pdf,.pdf" disabled={Boolean(busy)} onChange={(event) => { setFile(event.target.files[0] || null); invalidateDraft(); }} /></Field><Button type="button" secondary disabled={!file || Boolean(busy) || !bootstrap.ai_available} onClick={() => extract('pdf')}><Upload size={15} />{busy === 'pdf' ? 'Reading PDF…' : 'Import PDF'}</Button></div> : <><Field label="Study document text"><textarea rows="5" value={source} disabled={Boolean(busy)} onChange={(event) => { setSource(event.target.value); invalidateDraft(); }} maxLength="40000" /></Field><Button className="section-action" type="button" secondary disabled={source.trim().length < 10 || Boolean(busy) || !bootstrap.ai_available} onClick={() => extract('text')}>{busy === 'text' ? 'Reading…' : 'Import text'}</Button></>}
     </details>
@@ -72,14 +114,13 @@ function CreateStudy({ bootstrap, onBack, onPublish, scene = {} }) {
       <Field label="Compensation (£)"><input type="number" min="0" max="10000" step="0.01" required value={study.compensation} onChange={(event) => change('compensation', Number(event.target.value))} /></Field>
     </div><fieldset className="plain-fieldset"><legend>Study topics <span>(choose at least one)</span></legend><TagPicker topics={bootstrap.topics} selected={study.tags} onChange={(tags) => change('tags', tags)} /></fieldset>{!draft && <Button className="section-action" disabled={!bootstrap.ai_available}>{busy === 'prepare' ? 'Preparing…' : 'Prepare preview'}</Button>}</section></fieldset></form>}
     {draft && <form onSubmit={publish}>
-      <section className="form-section study-preview">
+      {bootstrap.demo ? <DemoStudyFields draft={draft} onChange={changeDraft} /> : <section className="form-section study-preview">
         <div data-tour="preview"><div className="section-title"><h2>Check study details</h2><span className="tag">{draft.mode === 'sample' ? 'Sample result' : 'AI prepared'}</span></div><h3>{draft.fields.title}</h3><p>{draft.fields.summary}</p><p className="preserve-lines">{draft.fields.description}</p><h3>Who can take part</h3><p className="preserve-lines">{draft.fields.requirements}</p></div>
-        {bootstrap.demo && <div className="demo-rule-list" data-tour="rules"><h3>Eligibility checks</h3>{draft.rules.map((rule) => <div key={rule.id}><span>{rule.field === 'question' ? 'Study-specific question' : 'Saved questionnaire answer'}</span><p>{rule.question}</p><small>Source: “{rule.source}”</small></div>)}</div>}
         {draft.manual_review && <p className="review-decision">Participants need researcher review before booking.</p>}
         {draft.review_notes.length > 0 && <details className="preview-notes"><summary>Review notes ({draft.review_notes.length})</summary><ul>{draft.review_notes.map((note, index) => <li key={index}>{note}</li>)}</ul></details>}
-        {!bootstrap.demo && <p className="small-note">To correct this preview, edit the description above and prepare it again.</p>}
-      </section>
-      <details className="source-document"><summary>Original source text</summary><p className="preserve-lines">{draft.source_text}</p></details>
+        <p className="small-note">To correct this preview, edit the description above and prepare it again.</p>
+      </section>}
+      {!bootstrap.demo && <details className="source-document"><summary>Original source text</summary><p className="preserve-lines">{draft.source_text}</p></details>}
       <section className="form-section" data-tour="sessions"><h2>Sessions</h2><SlotsEditor slots={slots} onChange={setSlots} /></section>
       <div className="publish-section" data-tour="publish"><label className="check"><input type="checkbox" checked={approved} onChange={(event) => setApproved(event.target.checked)} required /><span>I checked the study details and eligibility requirements and approve publication.</span></label><Button disabled={Boolean(busy) || !approved}>{busy === 'publish' ? 'Publishing…' : 'Publish study'}<CheckCircle2 size={16} /></Button></div>
     </form>}

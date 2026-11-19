@@ -22,7 +22,7 @@ function DemoEntry({ onTour, onExplore }) {
     <header className="demo-entry-header"><Brand /><DemoBadge /></header>
     <main className="demo-entry-main">
       <section className="demo-intro"><h1>Less study admin.<br />More time for research.</h1><p>Find and book studies as a participant. Then create and manage a study as a researcher.</p><div className="demo-entry-actions"><Button onClick={() => onTour('participant')}><Play size={15} />Start participant tour<ArrowRight size={16} /></Button><Button secondary onClick={() => onExplore('participant')}>Explore demo</Button></div></section>
-      <section className="demo-entry-roles" aria-label="Participant and researcher roles"><div className="demo-entry-role"><RoleStatus role="participant" /><p>Answer questions, find studies and book a session.</p></div><div className="demo-entry-role"><RoleStatus role="researcher" /><p>Import study details, set session times and view bookings.</p><button className="text-button" onClick={() => onTour('researcher')}>Start researcher tour<ArrowRight size={14} /></button></div></section>
+      <section className="demo-entry-roles" aria-label="Participant and researcher roles"><div className="demo-entry-role"><RoleStatus role="participant" /><p>Answer questions, find studies and book a session.</p></div><div className="demo-entry-role"><RoleStatus role="researcher" /><p>Import study details, set session times and view bookings.</p></div></section>
     </main>
   </div>;
 }

@@ -66,6 +66,20 @@ test('sample publication creates fifth study and one notification; no replay', a
   assert.equal(store.snapshot().studies.length, 5);
 });
 
+test('publication preserves edited sample details and questions', async () => {
+  const store = createDemoStore();
+  const draft = await store.request('/extract', 'POST', { demo: true });
+  draft.fields.title = 'Memory and focus';
+  draft.fields.compensation = 20;
+  draft.rules.push({ id: 'attend_oxford', field: 'question', answer_type: 'boolean', question: 'Can you attend in Oxford?', value: true, choices: [], source: 'Added by researcher' });
+  const study = await store.request('/studies', 'POST', { approved: true, draft, slots: [{ starts_at: new Date(Date.now() + 2 * 86400000).toISOString(), capacity: 3 }] });
+  assert.equal(study.title, 'Memory and focus');
+  assert.equal(study.compensation, 20);
+  assert.equal(study.rules.length, 5);
+  const match = (await store.request('/matches')).matches.find((item) => item.id === study.id);
+  assert.equal(match.questions.length, 2);
+});
+
 test('screening, booking, capacity, notifications and researcher records agree', async () => {
   const store = createDemoStore();
   await store.request('/answers', 'POST', { study_id: 1, answers: { previous_visual_search: false } });
